@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title GenesisPass
  * @dev BlockAI Genesis Pass NFT - Early access and ecosystem participation token
- * 
+ *
  * Features:
  * - Limited supply: 1,000 NFTs
  * - Fixed price minting: 0.005 ETH (~$10)
@@ -24,13 +24,13 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     uint256 public constant MAX_SUPPLY = 1000;
     uint256 public constant TOKENS_PER_NFT = 100;
     uint256 public constant INITIAL_MINT_PRICE = 0.005 ether; // ~$10
-    
+
     // State variables
     uint256 private _nextTokenId = 1;
     uint256 public mintPrice = INITIAL_MINT_PRICE;
     bool public mintingEnabled = false;
     bool public tokenClaimEnabled = false;
-    
+
     // Token data structures
     struct PassData {
         uint256 points;
@@ -39,11 +39,11 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         bool airdropEligible;
         uint256 airdropMultiplier; // 100 = 1x, 200 = 2x, etc.
     }
-    
+
     mapping(uint256 => PassData) private _passData;
     mapping(address => bool) private _hasMinted; // Abuse prevention
     mapping(address => uint256) private _walletPoints; // Wallet-level points tracking
-    
+
     // Events
     event Minted(address indexed to, uint256 indexed tokenId, uint256 price);
     event PointsAwarded(uint256 indexed tokenId, uint256 points, uint256 totalPoints);
@@ -53,13 +53,13 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     event MintPriceUpdated(uint256 newPrice);
     event MintingToggled(bool enabled);
     event TokenClaimToggled(bool enabled);
-    
+
     constructor(address initialOwner) ERC721("BlockAI Genesis Pass", "BGEN") Ownable(initialOwner) {
         // Contract initialized
     }
-    
+
     // ============ MINTING ============
-    
+
     /**
      * @dev Mint a Genesis Pass NFT
      * @param to Address to mint the NFT to
@@ -69,10 +69,10 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         require(msg.value >= mintPrice, "Insufficient payment");
         require(totalSupply() < MAX_SUPPLY, "Max supply reached");
         require(!_hasMinted[to], "Address already minted");
-        
+
         uint256 tokenId = _nextTokenId++;
         _hasMinted[to] = true;
-        
+
         // Initialize pass data
         _passData[tokenId] = PassData({
             points: 0,
@@ -81,19 +81,19 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
             airdropEligible: false,
             airdropMultiplier: 100 // Default: 1x
         });
-        
+
         _safeMint(to, tokenId);
-        
+
         // Refund excess payment
         if (msg.value > mintPrice) {
             payable(to).transfer(msg.value - mintPrice);
         }
-        
+
         emit Minted(to, tokenId, mintPrice);
     }
-    
+
     // ============ TOKEN ALLOCATION ============
-    
+
     /**
      * @dev Claim 100 BlockAI ecosystem tokens for a Genesis Pass
      * @param tokenId The token ID to claim tokens for
@@ -102,14 +102,14 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         require(tokenClaimEnabled, "Token claiming is disabled");
         require(_ownerOf(tokenId) == msg.sender, "Not token owner");
         require(!_passData[tokenId].tokensClaimed, "Tokens already claimed");
-        
+
         _passData[tokenId].tokensClaimed = true;
-        
+
         emit TokensClaimed(tokenId, msg.sender);
     }
-    
+
     // ============ POINTS SYSTEM ============
-    
+
     /**
      * @dev Award points to a specific token (owner-controlled)
      * @param tokenId The token ID to award points to
@@ -117,14 +117,14 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
      */
     function awardPoints(uint256 tokenId, uint256 points) external onlyOwner {
         require(_ownerOf(tokenId) != address(0), "Token does not exist");
-        
+
         address tokenOwner = _ownerOf(tokenId);
         _passData[tokenId].points += points;
         _walletPoints[tokenOwner] += points;
-        
+
         emit PointsAwarded(tokenId, points, _passData[tokenId].points);
     }
-    
+
     /**
      * @dev Batch award points to multiple tokens (gas efficient)
      * @param tokenIds Array of token IDs
@@ -132,20 +132,20 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
      */
     function batchAwardPoints(uint256[] calldata tokenIds, uint256[] calldata pointsArray) external onlyOwner {
         require(tokenIds.length == pointsArray.length, "Arrays length mismatch");
-        
+
         for (uint256 i = 0; i < tokenIds.length; i++) {
             require(_ownerOf(tokenIds[i]) != address(0), "Token does not exist");
-            
+
             address tokenOwner = _ownerOf(tokenIds[i]);
             _passData[tokenIds[i]].points += pointsArray[i];
             _walletPoints[tokenOwner] += pointsArray[i];
-            
+
             emit PointsAwarded(tokenIds[i], pointsArray[i], _passData[tokenIds[i]].points);
         }
     }
-    
+
     // ============ ACCESS CONTROL ============
-    
+
     /**
      * @dev Set access level for a token (tiered structure)
      * @param tokenId The token ID
@@ -153,12 +153,12 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
      */
     function setAccessLevel(uint256 tokenId, uint256 level) external onlyOwner {
         require(_ownerOf(tokenId) != address(0), "Token does not exist");
-        
+
         _passData[tokenId].accessLevel = level;
-        
+
         emit AccessLevelUpdated(tokenId, level);
     }
-    
+
     /**
      * @dev Check MVP access level for a token
      * @param tokenId The token ID
@@ -168,9 +168,9 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         require(_ownerOf(tokenId) != address(0), "Token does not exist");
         return _passData[tokenId].accessLevel;
     }
-    
+
     // ============ AIRDROP SYSTEM ============
-    
+
     /**
      * @dev Set airdrop eligibility for a token
      * @param tokenId The token ID
@@ -180,13 +180,13 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     function setAirdropEligibility(uint256 tokenId, bool eligible, uint256 multiplier) external onlyOwner {
         require(_ownerOf(tokenId) != address(0), "Token does not exist");
         require(multiplier >= 100, "Multiplier must be at least 100 (1x)");
-        
+
         _passData[tokenId].airdropEligible = eligible;
         _passData[tokenId].airdropMultiplier = multiplier;
-        
+
         emit AirdropEligibilityUpdated(tokenId, eligible, multiplier);
     }
-    
+
     /**
      * @dev Batch set airdrop eligibility (gas efficient)
      * @param tokenIds Array of token IDs
@@ -202,18 +202,18 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
             tokenIds.length == eligibleArray.length && tokenIds.length == multiplierArray.length,
             "Arrays length mismatch"
         );
-        
+
         for (uint256 i = 0; i < tokenIds.length; i++) {
             require(_ownerOf(tokenIds[i]) != address(0), "Token does not exist");
             require(multiplierArray[i] >= 100, "Multiplier must be at least 100 (1x)");
-            
+
             _passData[tokenIds[i]].airdropEligible = eligibleArray[i];
             _passData[tokenIds[i]].airdropMultiplier = multiplierArray[i];
-            
+
             emit AirdropEligibilityUpdated(tokenIds[i], eligibleArray[i], multiplierArray[i]);
         }
     }
-    
+
     /**
      * @dev Check if a token is eligible for airdrop
      * @param tokenId The token ID
@@ -225,9 +225,9 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         PassData memory data = _passData[tokenId];
         return (data.airdropEligible, data.airdropMultiplier);
     }
-    
+
     // ============ VIEW FUNCTIONS ============
-    
+
     /**
      * @dev Get all pass data for a token
      * @param tokenId The token ID
@@ -237,24 +237,22 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
      * @return airdropEligible Airdrop eligibility status
      * @return airdropMultiplier Airdrop multiplier
      */
-    function getPassData(uint256 tokenId) external view returns (
-        uint256 points,
-        bool tokensClaimed,
-        uint256 accessLevel,
-        bool airdropEligible,
-        uint256 airdropMultiplier
-    ) {
+    function getPassData(uint256 tokenId)
+        external
+        view
+        returns (
+            uint256 points,
+            bool tokensClaimed,
+            uint256 accessLevel,
+            bool airdropEligible,
+            uint256 airdropMultiplier
+        )
+    {
         require(_ownerOf(tokenId) != address(0), "Token does not exist");
         PassData memory data = _passData[tokenId];
-        return (
-            data.points,
-            data.tokensClaimed,
-            data.accessLevel,
-            data.airdropEligible,
-            data.airdropMultiplier
-        );
+        return (data.points, data.tokensClaimed, data.accessLevel, data.airdropEligible, data.airdropMultiplier);
     }
-    
+
     /**
      * @dev Get accumulated points for a token
      * @param tokenId The token ID
@@ -264,7 +262,7 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         require(_ownerOf(tokenId) != address(0), "Token does not exist");
         return _passData[tokenId].points;
     }
-    
+
     /**
      * @dev Get wallet-level points (for abuse prevention)
      * @param wallet The wallet address
@@ -273,7 +271,7 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     function getWalletPoints(address wallet) external view returns (uint256) {
         return _walletPoints[wallet];
     }
-    
+
     /**
      * @dev Check if an address has minted
      * @param account The address to check
@@ -282,9 +280,9 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     function hasMinted(address account) external view returns (bool) {
         return _hasMinted[account];
     }
-    
+
     // ============ OWNER FUNCTIONS ============
-    
+
     /**
      * @dev Enable or disable minting
      * @param enabled Whether minting should be enabled
@@ -293,7 +291,7 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         mintingEnabled = enabled;
         emit MintingToggled(enabled);
     }
-    
+
     /**
      * @dev Enable or disable token claiming
      * @param enabled Whether token claiming should be enabled
@@ -302,7 +300,7 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         tokenClaimEnabled = enabled;
         emit TokenClaimToggled(enabled);
     }
-    
+
     /**
      * @dev Update mint price
      * @param newPrice The new mint price in wei
@@ -312,7 +310,7 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         mintPrice = newPrice;
         emit MintPriceUpdated(newPrice);
     }
-    
+
     /**
      * @dev Reset mint restriction for an address (for special cases)
      * @param account The address to reset
@@ -320,7 +318,7 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     function resetMintRestriction(address account) external onlyOwner {
         _hasMinted[account] = false;
     }
-    
+
     /**
      * @dev Withdraw contract funds
      */
@@ -329,9 +327,9 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         require(balance > 0, "No funds to withdraw");
         payable(owner()).transfer(balance);
     }
-    
+
     // ============ OVERRIDES ============
-    
+
     function _update(address to, uint256 tokenId, address auth)
         internal
         override(ERC721, ERC721Enumerable)
@@ -339,20 +337,12 @@ contract GenesisPass is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     {
         return super._update(to, tokenId, auth);
     }
-    
-    function _increaseBalance(address account, uint128 value)
-        internal
-        override(ERC721, ERC721Enumerable)
-    {
+
+    function _increaseBalance(address account, uint128 value) internal override(ERC721, ERC721Enumerable) {
         super._increaseBalance(account, value);
     }
-    
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721, ERC721Enumerable)
-        returns (bool)
-    {
+
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721Enumerable) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 }
