@@ -184,13 +184,6 @@ cast call <CONTRACT_ADDRESS> "totalSupply()" --rpc-url sepolia
 - **Foundry** - Development framework
 - **Solidity 0.8.24** - Smart contract language
 - **OpenZeppelin Contracts v5.5.0** - Security-audited libraries
-- **Ethers.js** - Frontend integration (example)
-
-## 📖 Documentation
-
-- [DEPLOYMENT.md](./DEPLOYMENT.md) - Detailed deployment guide
-- [frontend/integration-example.js](./frontend/integration-example.js) - Frontend integration
-- Contract code includes comprehensive NatSpec comments
 
 ## ⚠️ Important Notes
 
@@ -214,21 +207,12 @@ cast call <CONTRACT_ADDRESS> "totalSupply()" --rpc-url sepolia
 ✅ Deployment scripts  
 ✅ ABI generation  
 
-## 📞 Support
-
-For questions or issues:
-1. Review contract code and comments
-2. Check test files for usage examples
-3. Refer to DEPLOYMENT.md for deployment steps
-4. See frontend/integration-example.js for integration
-
 ## 📄 License
 
 MIT
 
 ---
 
-**Status**: ✅ Ready for testnet deployment and testing
+**Status**: Ready for testnet deployment and testing
 
 Built with Foundry and OpenZeppelin
-# Contracts
